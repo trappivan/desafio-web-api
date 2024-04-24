@@ -1,7 +1,8 @@
-version: "3.5"
+version: "3.8"
 
 services:
   db:
+    hostname: db
     image: postgres:latest
     restart: always
     env_file:
@@ -28,13 +29,8 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
-    networks:
-      - my-network
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
     env_file:
       - .env
     restart: always
@@ -43,20 +39,20 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    command: ["./wait-for-it.sh", "db:5432", "--", "npm", "run", "start"]
     ports:
       - "4000:4000"
     volumes:
       - .:/server
       - /server/node_modules
     restart: always
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - my-network
 
 networks:
-  default:
-    name: my-network
+  my-network:
     driver: bridge
-
 volumes:
   db-data: {}
