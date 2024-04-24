@@ -2,10 +2,11 @@ Projeto criado com NextJS para o front-end e Express com TypeORM no backend, con
 
 Para rodar o projeto siga as instruções abaixo:
 
-1. docker-compose build
-2. docker-compose up
-3. Acessar a rota localhost:3000
-4. Pronto!
+1. Clone o repositório
+2. Na pasta root rode: docker-compose build
+3. Após o build rode: docker-compose up
+4. Acessar a rota localhost:3000
+5. Pronto!
 
 //
 
