@@ -1,33 +1,6 @@
 version: "3.5"
 
 services:
-  client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    env_file:
-      - .env
-    depends_on:
-      - db
-
-  server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    ports:
-      - "4000:4000"
-    volumes:
-      - .:/server
-      - /server/node_modules
-    depends_on:
-      - db
-    links:
-      - db
   db:
     image: postgres:latest
     restart: always
@@ -37,11 +10,53 @@ services:
       POSTGRES_USER: ${USER}
       POSTGRES_PASSWORD: ${PASSWORD}
       POSTGRES_DB: ${DATABASE}
-      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
+    command: postgres -c checkpoint_timeout=600 -c max_wal_size=4096
+    healthcheck:
+      #CHANGE 1: this command checks if the database is ready, right on the source db server
+      test: ["CMD-SHELL", "pg_isready -d $${DATABASE} -U $${USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - my-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    networks:
+      - my-network
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    restart: always
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    command: ["./wait-for-it.sh", "db:5432", "--", "npm", "run", "start"]
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/server
+      - /server/node_modules
+    restart: always
+    networks:
+      - my-network
+
 networks:
   default:
     name: my-network
+    driver: bridge
+
+volumes:
+  db-data: {}
