@@ -1,15 +1,15 @@
 "use client";
 
-import { Button, Input } from "@mui/material";
-import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { FieldValue, FieldValues, useForm } from "react-hook-form";
 
 import DatagridCep from "./datagrid/datagrid";
-import CepErrorSnackbar from "./snackbar/error";
-import CepSucessSnackbar from "./snackbar/success";
-import RemovedCepSucessSnackbar from "./snackbar/removedSucess";
-import RemovedCepErrorSnackbar from "./snackbar/removedError";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import CustomSnackbar, {
+	ISnackbarRef,
+} from "@/components/Snackbar/CustomSnackbar";
 
 export type Address = {
 	id?: number;
@@ -24,33 +24,38 @@ export type Address = {
 	ddd?: string;
 	siafi?: string;
 };
+import { useSnackbar } from "@mui/base/useSnackbar";
+// or
+const cepSchema = z.object({
+	ceps: z.string().min(8),
+});
 
 export default function BuscarCep() {
-	const [cepValue, setCepValue] = useState<string>("");
 	const [address, setAddress] = useState<Address[]>([]);
 	const [selectedRows, setSelectedRows] = useState<Address[]>([]);
 
-	const [openErrorSnackbar, setOpenErrorSnackbar] = useState(false);
-	const [openSucessSnackbar, setOpenSucessSnackbar] = useState(false);
-	const [openRemovedSucessSnackbar, setOpenRemovedSucessSnackbar] =
-		useState(false);
-	const [openRemovedErrorSnackbar, setOpenRemovedErrorSnackbar] =
-		useState(false);
+	const { handleSubmit, register, reset } = useForm({
+		resolver: zodResolver(cepSchema),
+	});
+
+	const errorSnackbarRef = useRef<ISnackbarRef>(null);
+	const successSnackbarRef = useRef<ISnackbarRef>(null);
+	const removedSuccessSnackbarRef = useRef<ISnackbarRef>(null);
+	const removedErrorSnackbarRef = useRef<ISnackbarRef>(null);
 
 	useEffect(() => {
 		getUserData();
 	}, []);
 
-	async function requestAddres(e: React.FormEvent) {
-		e.preventDefault();
-
+	async function requestAddres(data: FieldValues) {
+		console.log("asdasd", data);
 		try {
 			const responseGet = await axios.get(
-				`https://viacep.com.br/ws/${cepValue}/json/`
+				`https://viacep.com.br/ws/${data.ceps}/json/`
 			);
 
 			const responsePost = await axios.post(
-				"http://localhost:4000/api/address/create",
+				"http://localhost:4000/api/v1/address/create",
 				responseGet.data,
 				{
 					withCredentials: true,
@@ -59,16 +64,18 @@ export default function BuscarCep() {
 
 			setAddress([...address, responsePost.data]);
 
-			setOpenSucessSnackbar(true);
-		} catch (error) {
-			setOpenErrorSnackbar(true);
+			reset();
+
+			successSnackbarRef?.current?.openSnackbar("Cep adicionado com sucesso!");
+		} catch (error: any) {
+			errorSnackbarRef?.current?.openSnackbar(error.response.data.errorMessage);
 		}
 	}
 
 	async function getUserData() {
 		try {
 			const response = await axios.get(
-				"http://localhost:4000/api/users/getAll",
+				"http://localhost:4000/api/v1/users/getAll",
 				{
 					withCredentials: true,
 				}
@@ -82,7 +89,7 @@ export default function BuscarCep() {
 
 	async function deleteRowItems(rows: Address[]) {
 		try {
-			await axios.post("http://localhost:4000/api/address/delete", rows, {
+			await axios.post("http://localhost:4000/api/v1/address/delete", rows, {
 				withCredentials: true,
 			});
 
@@ -92,37 +99,23 @@ export default function BuscarCep() {
 
 			setAddress(newAddress);
 
-			setOpenRemovedSucessSnackbar(true);
-		} catch (error) {
-			console.warn(error);
+			removedSuccessSnackbarRef?.current?.openSnackbar(
+				"Cep removido com sucesso!"
+			);
+		} catch (error: any) {
+			removedErrorSnackbarRef?.current?.openSnackbar(
+				error.response.data.errorMessage
+			);
 		}
 	}
-
+	const snackbar = useSnackbar;
+	snackbar();
 	return (
 		<>
-			<CepErrorSnackbar
-				text="Erro ao adicionar um cep"
-				open={openErrorSnackbar}
-				setOpen={setOpenErrorSnackbar}
-			/>
-
-			<CepSucessSnackbar
-				text="Cep adicionado com sucesso!"
-				open={openSucessSnackbar}
-				setOpen={setOpenSucessSnackbar}
-			/>
-
-			<RemovedCepSucessSnackbar
-				text="Removido com sucesso!"
-				open={openRemovedSucessSnackbar}
-				setOpen={setOpenRemovedSucessSnackbar}
-			/>
-
-			<RemovedCepErrorSnackbar
-				text="Erro ao remover item!"
-				open={openRemovedErrorSnackbar}
-				setOpen={setOpenRemovedErrorSnackbar}
-			/>
+			<CustomSnackbar ref={errorSnackbarRef} severety="error" />
+			<CustomSnackbar ref={successSnackbarRef} severety="success" />
+			<CustomSnackbar ref={removedSuccessSnackbarRef} severety="success" />
+			<CustomSnackbar ref={removedErrorSnackbarRef} severety="error" />
 
 			<div className="flex flex-col justify-center items-center space-y-4 h-screen w-screen bg-slate-500">
 				<div className="flex flex-col justify-start items-center">
@@ -130,15 +123,13 @@ export default function BuscarCep() {
 						<h1>Buscar e adicionar endereços por CEP</h1>
 					</div>
 					<div className="flex flex-row space-x-4 ">
-						<form onSubmit={requestAddres} className="space-x-2">
+						<form onSubmit={handleSubmit(requestAddres)} className="space-x-2">
 							<input
+								{...register("ceps", { required: true })}
 								type="text"
 								className="bg-slate-700 rounded-lg text-white p-2 border border-solid border-slate-200 "
 								placeholder="Digite o CEP"
 								color="primary"
-								onChange={(e) => {
-									setCepValue(e.target.value);
-								}}
 							/>
 							<button
 								className="p-2 rounded-lg border border-solid border-slate-200 text-white "

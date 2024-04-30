@@ -1,5 +1,3 @@
-"use client";
-
 import Login from "@/feature/login";
 
 const Page = () => {

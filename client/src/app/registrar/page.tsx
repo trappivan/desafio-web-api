@@ -1,5 +1,3 @@
-"use client";
-
 import Registrar from "@/feature/registrar";
 
 const Register = () => {

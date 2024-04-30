@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from "typeorm";
-import { User } from "../user/user.entity";
+import { User } from "../../user/entity/user.entity";
 
 @Entity()
 export class Address {
@@ -38,32 +38,4 @@ export class Address {
 
 	@Column("int")
 	id: number;
-
-	constructor(
-		id: number,
-		cep: string,
-		bairro: string,
-		complemento: string,
-		ddd: string,
-		gia: string,
-		ibge: string,
-		localidade: string,
-		logradouro: string,
-		siafi: string,
-		uf: string,
-		user: User
-	) {
-		this.id = id;
-		this.cep = cep;
-		this.bairro = bairro;
-		this.complemento = complemento;
-		this.ddd = ddd;
-		this.gia = gia;
-		this.ibge = ibge;
-		this.localidade = localidade;
-		this.logradouro = logradouro;
-		this.siafi = siafi;
-		this.uf = uf;
-		this.user = user;
-	}
 }

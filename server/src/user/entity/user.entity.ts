@@ -1,5 +1,5 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { Address } from "../address/address.entity";
+import { Address } from "../../address/entity/address.entity";
 
 @Entity()
 export class User {
@@ -20,16 +20,4 @@ export class User {
 
 	@OneToMany(() => Address, (address) => address.user)
 	address: Address[];
-
-	constructor(
-		email: string,
-		password: string,
-		created_at: Date,
-		updated_at: Date
-	) {
-		this.email = email;
-		this.password = password;
-		this.created_at = created_at;
-		this.updated_at = updated_at;
-	}
 }

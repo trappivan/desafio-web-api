@@ -1,54 +1,85 @@
 import { AppDataSource } from "../data-source";
-import { Address } from "./address.entity";
-import { User } from "../user/user.entity";
+import { Address } from "./entity/address.entity";
+import { User } from "../user/entity/user.entity";
+import handleGetRepository from "../utils/handleGetRepository";
+import { EntityTarget, Repository } from "typeorm";
+import { JwtPayload } from "jsonwebtoken";
+import { UserService } from "../user/user.services";
+import { AddressResponseDTO } from "./dto/address-response.dto";
+import { AddressRequestDTO } from "./dto/address-request.dto";
+import { CustomError } from "../utils/CustomError";
 
 export class AddressService {
-	async createAddress(address: Address, cookie: any) {
-		const user = await AppDataSource.getRepository(User).findOne({
-			where: { id: cookie.id },
-			relations: ["address"],
-		});
+	private addressRepository: Repository<Address>;
 
-		if (!user) {
-			throw new Error("Usuário não encontrado");
-		}
+	constructor(addressEntity: EntityTarget<Address>) {
+		this.addressRepository = handleGetRepository(addressEntity);
+	}
 
-		const createAddress = new Address(
-			Math.floor(Math.random() * 1000000 + 1),
-			address.bairro,
-			address.cep,
-			address.complemento,
-			address.ddd,
-			address.gia,
-			address.ibge,
-			address.localidade,
-			address.logradouro,
-			address.siafi,
-			address.uf,
-			user
-		);
-
+	async findAddressByCep(cep: string) {
 		try {
-			const newAddress = await AppDataSource.getRepository(Address).save(
-				createAddress
-			);
+			const address = await this.addressRepository.findOne({
+				where: {
+					cep,
+				},
+			});
 
-			return newAddress;
+			return address;
 		} catch (error) {
-			throw new Error("Erro ao cadastrar endereço");
+			throw new CustomError(401, "General", "Erro ao buscar endereço pelo CEP");
 		}
 	}
 
-	async deleteAddress(address: Address[]) {
+	async createAddress(address: AddressRequestDTO, cookie: JwtPayload) {
+		const user = await new UserService(User).findOneById(cookie.id);
+
+		if (user === null) {
+			throw new CustomError(404, "General", "Usuário não encontrado");
+		}
+
+		const addressExists = await this.findAddressByCep(address.cep);
+
+		if (addressExists) {
+			throw new CustomError(402, "General", "Endereço já cadastrado");
+		}
+
+		const createAddress = this.addressRepository.create({
+			id: Math.floor(Math.random() * 1000000 + 1),
+			bairro: address.bairro,
+			cep: address.cep,
+			complemento: address.complemento,
+			ddd: address.ddd,
+			gia: address.gia,
+			ibge: address.ibge,
+			localidade: address.localidade,
+			logradouro: address.logradouro,
+			siafi: address.siafi,
+			uf: address.uf,
+			user,
+		});
+
 		try {
-			const addressRepository = AppDataSource.getRepository(Address);
-			address.forEach(async (address) => {
-				await addressRepository.delete(address);
+			console.log("	address", createAddress);
+			const newAddress = await this.addressRepository.save(createAddress);
+			console.log("asdasd", newAddress);
+			return new AddressResponseDTO(newAddress);
+		} catch (error) {
+			throw new CustomError(401, "Unauthorized", "Erro ao cadastrar endereço");
+		}
+	}
+
+	async deleteAddress(address: AddressRequestDTO[]) {
+		const deleteAddress = this.addressRepository.create(address);
+		console.log("address", address);
+		console.log("deleteAddress", deleteAddress);
+		try {
+			deleteAddress.forEach(async (deleteAddress) => {
+				await this.addressRepository.delete(deleteAddress);
 			});
 
 			return { message: "Endereços deletados com sucesso" };
 		} catch (error) {
-			throw new Error("Erro ao deletar endereço");
+			throw new CustomError(401, "General", "Erro ao deletar endereço");
 		}
 	}
 }

@@ -1,5 +1,4 @@
 import React from "react";
-import BuscaCep from "./cep/page";
 
 const Page = () => {
 	return (
