@@ -1,7 +1,8 @@
 Projeto criado com NextJS para o front-end e Express com TypeORM no backend, containerizado com docker.
 
-Para rodar o projeto siga as instruções abaixo:
 
+Para rodar o projeto siga as instruções abaixo:
+(Deve se ter instalado o Driver do PostgreSQL e criado usuário respectivo para o projeto)
 1. Clone o repositório
 2. Na pasta root rode: docker-compose build
 3. Após o build rode: docker-compose up
